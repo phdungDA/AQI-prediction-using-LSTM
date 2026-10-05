@@ -40,15 +40,22 @@ def main():
     os.makedirs(MODEL_DIR, exist_ok=True)
     best_model_path = os.path.join(MODEL_DIR, "lstm_baseline.h5")
 
+    # Cả 2 callback cùng theo dõi val_loss (mode="min": càng thấp càng tốt)
+    # - ModelCheckpoint: cuối mỗi epoch, nếu val_loss thấp hơn mọi epoch trước
+    #   → ghi đè models/lstm_baseline.h5 (file luôn là epoch tốt nhất)
+    # - EarlyStopping: dừng nếu 7 epoch liên tiếp val_loss không cải thiện,
+    #   rồi nạp lại trọng số của epoch tốt nhất vào model trong RAM
     callbacks = [
         ModelCheckpoint(
             best_model_path,
-            monitor="val_accuracy",
+            monitor="val_loss",
+            mode="min",
             save_best_only=True,
             verbose=1,
         ),
         EarlyStopping(
-            monitor="val_accuracy",
+            monitor="val_loss",
+            mode="min",
             patience=7,
             restore_best_weights=True,
             verbose=1,
