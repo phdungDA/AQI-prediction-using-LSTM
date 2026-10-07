@@ -12,12 +12,12 @@ def render():
     df = get_data()
     d_min, d_max_ts = df.index.min(), df.index.max()
 
-    st.markdown('<div class="page-title">🧪 CHẤT Ô NHIỄM</div>', unsafe_allow_html=True)
-    st.markdown('<div class="page-sub">Theo dõi từng chất ô nhiễm theo thời gian</div>',
+    st.markdown('<div class="page-title">🧪 POLLUTANTS</div>', unsafe_allow_html=True)
+    st.markdown('<div class="page-sub">Track each pollutant over time</div>',
                 unsafe_allow_html=True)
 
-    days = st.radio("Khoảng thời gian", [1, 7, 30], index=1,
-                     format_func=lambda d: {1: "24 giờ qua", 7: "7 ngày", 30: "30 ngày"}[d],
+    days = st.radio("Time range", [1, 7, 30], index=1,
+                     format_func=lambda d: {1: "Past 24h", 7: "7 days", 30: "30 days"}[d],
                      horizontal=True)
     start = max(d_min, d_max_ts - pd.Timedelta(days=days))
     view = df.loc[start:d_max_ts]
@@ -33,7 +33,7 @@ def render():
                 <div class="pval">{cur_val:.1f} <span style="font-size:12px;color:#9ca3af">µg/m³</span></div>
                 </div>""" if pd.notna(cur_val) else
                 f"""<div class="pcard"><div class="top">{POLLUTANT_NAMES[key]}</div>
-                <div class="pval" style="color:#9ca3af;font-size:14px">Không có dữ liệu</div></div>""",
+                <div class="pval" style="color:#9ca3af;font-size:14px">No data</div></div>""",
                 unsafe_allow_html=True,
             )
             fig = go.Figure(go.Scatter(x=view.index, y=view[key], mode="lines",
