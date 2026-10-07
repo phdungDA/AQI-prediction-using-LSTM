@@ -12,12 +12,12 @@ import streamlit as st
 from common import AQI_COLORS, AQI_LABELS, get_data, latest_row, predict_next_hour
 
 IMPACT_NOTE = {
-    "sáng sớm": "Giao thông còn thưa",
-    "giờ cao điểm sáng": "Giao thông đông đúc",
-    "trưa - chiều": "Bình thường",
-    "giờ cao điểm chiều": "Giao thông đông đúc",
-    "tối": "Bắt đầu lắng bụi",
-    "đêm": "Có thể nghịch nhiệt, bụi tích tụ",
+    "sáng sớm": "Light traffic",
+    "giờ cao điểm sáng": "Heavy traffic",
+    "trưa - chiều": "Normal",
+    "giờ cao điểm chiều": "Heavy traffic",
+    "tối": "Dust starts to settle",
+    "đêm": "Possible temperature inversion, dust builds up",
 }
 
 
@@ -57,10 +57,10 @@ def render():
     df = get_data()
     cur = latest_row(df)
 
-    st.markdown('<div class="page-title">🔮 DỰ BÁO AQI 24 GIỜ TỚI</div>', unsafe_allow_html=True)
+    st.markdown('<div class="page-title">🔮 24-HOUR AQI FORECAST</div>', unsafe_allow_html=True)
     st.markdown(
-        f'<div class="page-sub">Mô hình: LSTM (h+1) · Ước lượng tham khảo (h+2 → h+24) · '
-        f'Dữ liệu tới {cur.name.strftime("%H:%M %d/%m/%Y")} (UTC)</div>',
+        f'<div class="page-sub">Model: LSTM (h+1) · Reference estimate (h+2 → h+24) · '
+        f'Data up to {cur.name.strftime("%H:%M %d/%m/%Y")} (GMT+7)</div>',
         unsafe_allow_html=True,
     )
 
@@ -78,7 +78,7 @@ def render():
         st.markdown(
             f"""
             <div class="hero-aqi">
-              <div class="lbl">CẤP AQI</div>
+              <div class="lbl">AQI LEVEL</div>
               <div class="val" style="color:{AQI_COLORS[level]}">{level}</div>
             </div>
             <span class="pbadge" style="background:{AQI_COLORS[level]}">● {AQI_LABELS[level]}</span>
@@ -89,14 +89,14 @@ def render():
         st.markdown(
             f"""
             <div style="font-weight:700; font-size:15px; color:#374151;">
-              AQI dự đoán (h+1, {next_time.strftime('%H:%M')})
+              Predicted AQI (h+1, {next_time.strftime('%H:%M')})
             </div>
             <div style="font-size:13.5px; color:#4b5563; margin:6px 0;">
-              Khuyến nghị: nhóm nhạy cảm (người cao tuổi, trẻ nhỏ, người mắc bệnh hô hấp)
-              nên cân nhắc hạn chế vận động thể lực nặng ngoài trời kéo dài.
+              Recommendation: sensitive groups (older adults, young children, people with respiratory conditions)
+              should consider limiting prolonged heavy outdoor exertion.
             </div>
             <span style="font-size:12.5px; color:#2e9e5b; font-weight:600;">
-              ● Độ tin cậy h+1: {conf:.1f}%
+              ● h+1 confidence: {conf:.1f}%
             </span>
             """,
             unsafe_allow_html=True,
@@ -104,11 +104,11 @@ def render():
 
     # ── Biểu đồ bậc thang 24h (h+1 thật + h+2..h+24 tham khảo) ──────────
     st.markdown(
-        '<div class="section-h">Diễn biến cấp độ AQI dự báo trong 24 giờ tới (h+1 đến h+24)</div>',
+        '<div class="section-h">Forecast AQI level over the next 24 hours (h+1 to h+24)</div>',
         unsafe_allow_html=True,
     )
-    st.caption("⚠️ Chỉ h+1 là đầu ra thật của model LSTM. Các mốc h+2→h+24 là ước lượng tham khảo "
-               "theo trung vị từng giờ trong ngày của 14 ngày gần nhất — KHÔNG phải dự báo đa bước của model.")
+    st.caption("⚠️ Only h+1 is a real output of the LSTM model. The h+2→h+24 steps are reference estimates "
+               "based on the hourly median of the last 14 days — NOT a multi-step forecast from the model.")
 
     ref = _reference_24h(df, cur.name)
     times = [next_time] + list(ref["time"])
@@ -122,35 +122,35 @@ def render():
     for lvl in range(1, 6):
         fig.add_hrect(y0=lvl - 0.5, y1=lvl + 0.5, fillcolor=AQI_COLORS[lvl], opacity=0.08, line_width=0)
     fig.add_vline(x=next_time, line_dash="dot", line_color="#9ca3af",
-                  annotation_text="Hiện tại +1h", annotation_position="top left")
+                  annotation_text="Now +1h", annotation_position="top left")
     fig.update_yaxes(range=[0.5, 5.5], tickvals=[1, 2, 3, 4, 5],
                       ticktext=[f"{l} - {AQI_LABELS[l]}" for l in range(1, 6)])
     fig.update_layout(height=340, margin=dict(l=10, r=10, t=10, b=10))
     st.plotly_chart(fig, width="stretch")
 
     # ── Bảng chi tiết từng giờ ────────────────────────────────────────
-    st.markdown('<div class="section-h">Bảng dữ liệu dự báo chi tiết từng giờ (24 mốc)</div>',
+    st.markdown('<div class="section-h">Detailed hourly forecast table (24 steps)</div>',
                 unsafe_allow_html=True)
 
     rows = [{
-        "Mốc dự báo": f"h+1 · {next_time.strftime('%H:%M')}",
-        "Cấp độ (1-5)": level,
-        "Phân loại": AQI_LABELS[level],
-        "PM2.5 dự kiến (µg/m³)": round(float(df["pm2_5"].iloc[-1]), 1) if pd.notna(df["pm2_5"].iloc[-1]) else None,
-        "Ghi chú": "Đầu ra thật của model LSTM",
+        "Forecast step": f"h+1 · {next_time.strftime('%H:%M')}",
+        "Level (1-5)": level,
+        "Category": AQI_LABELS[level],
+        "Expected PM2.5 (µg/m³)": round(float(df["pm2_5"].iloc[-1]), 1) if pd.notna(df["pm2_5"].iloc[-1]) else None,
+        "Note": "Actual LSTM model output",
     }]
     for i, r in ref.iterrows():
         pod = _part_of_day(r["time"].hour)
         rows.append({
-            "Mốc dự báo": f"h+{i + 2} · {r['time'].strftime('%H:%M')}",
-            "Cấp độ (1-5)": int(r["aqi"]),
-            "Phân loại": AQI_LABELS[int(r["aqi"])],
-            "PM2.5 dự kiến (µg/m³)": round(float(r["pm25"]), 1),
-            "Ghi chú": IMPACT_NOTE[pod],
+            "Forecast step": f"h+{i + 2} · {r['time'].strftime('%H:%M')}",
+            "Level (1-5)": int(r["aqi"]),
+            "Category": AQI_LABELS[int(r["aqi"])],
+            "Expected PM2.5 (µg/m³)": round(float(r["pm25"]), 1),
+            "Note": IMPACT_NOTE[pod],
         })
     table = pd.DataFrame(rows)
     st.dataframe(table, width="stretch", hide_index=True)
 
-    worst = int(table["Cấp độ (1-5)"].max())
-    st.info(f"Mức cao nhất ước tính trong 24h tới: **{worst} – {AQI_LABELS[worst]}** "
-            "(dựa trên quy luật lịch sử, không phải dự báo đa bước của model).")
+    worst = int(table["Level (1-5)"].max())
+    st.info(f"Highest estimated level in the next 24h: **{worst} – {AQI_LABELS[worst]}** "
+            "(based on historical patterns, not a multi-step forecast from the model).")
