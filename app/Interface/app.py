@@ -10,17 +10,17 @@ import page_history
 import page_forecast
 import page_pollutants
 
-st.set_page_config(page_title="AQI Dashboard", page_icon="🌫️", layout="wide")
+st.set_page_config(page_title="AQI Hà Nội", page_icon="🌫️", layout="wide")
 inject_css()
 
-PAGE_ICONS = {"Dashboard": "🏠", "Lịch sử": "🕐", "Dự báo 24h": "📈", "Chất ô nhiễm": "🌫️"}
+PAGE_ICONS = {"Dashboard": "🏠", "History": "🕐", "Forecast 24h": "📈", "Pollutants": "🌫️"}
 PAGES = list(PAGE_ICONS)
 if "page" not in st.session_state:
     st.session_state.page = "Dashboard"
 
 with st.sidebar:
-    st.markdown("### 🌫️ AQI Dashboard")
-    st.caption("Vị trí hiện tại")
+    st.markdown("### 🌫️ AQI Hà Nội")
+    st.caption("Hanoi")
     st.markdown("---")
 
     for p in PAGES:
@@ -33,30 +33,30 @@ with st.sidebar:
             st.rerun()
 
     st.markdown("---")
-    st.caption("🕐 Dữ liệu mới nhất")
+    st.caption("🕐 Latest data")
     st.write(last_update_text())
 
-    if st.button("🔄 Làm mới dữ liệu", width="stretch"):
+    if st.button("🔄 Refresh data", width="stretch"):
         st.cache_data.clear()
         st.rerun()
 
-    auto = st.checkbox("Tự làm mới (60 phút)", value=True)
+    auto = st.checkbox("Auto refresh (60 min)", value=True)
     if auto:
         try:
             from streamlit_autorefresh import st_autorefresh
             st_autorefresh(interval=60 * 60 * 1000, key="auto_refresh")
         except ImportError:
-            st.caption("⚠️ Cần `pip install streamlit-autorefresh`")
+            st.caption("⚠️ Requires `pip install streamlit-autorefresh`")
 
     st.markdown("---")
-    st.caption("Nguồn dữ liệu: OpenWeather")
+    st.caption("Data source: OpenWeather")
 
 # ── Router ────────────────────────────────────────────────────────────────────
 if st.session_state.page == "Dashboard":
     page_dashboard.render()
-elif st.session_state.page == "Lịch sử":
+elif st.session_state.page == "History":
     page_history.render()
-elif st.session_state.page == "Dự báo 24h":
+elif st.session_state.page == "Forecast 24h":
     page_forecast.render()
 else:
     page_pollutants.render()

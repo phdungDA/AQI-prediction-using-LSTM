@@ -17,10 +17,10 @@ def render():
     level = int(row["aqi"])
     worst_pollutant = max(POLLUTANT_ORDER, key=lambda c: pollutant_level(c, row[c]))
 
-    st.markdown('<div class="page-title">CHẤT LƯỢNG KHÔNG KHÍ HIỆN TẠI</div>', unsafe_allow_html=True)
+    st.markdown('<div class="page-title">CURRENT AIR QUALITY</div>', unsafe_allow_html=True)
     st.markdown(
-        f'<div class="page-sub">📍 Vị trí hiện tại · Cập nhật: '
-        f'{row.name.strftime("%H:%M %d/%m/%Y")} (UTC)</div>',
+        f'<div class="page-sub">📍 Hanoi · Updated: '
+        f'{row.name.strftime("%H:%M %d/%m/%Y")} (GMT+7)</div>',
         unsafe_allow_html=True,
     )
 
@@ -30,8 +30,8 @@ def render():
         st.markdown(
             f"""
             <div class="hero-aqi">
-              <div class="lbl">CHỈ SỐ CHẤT LƯỢNG<br>(AQI)</div>
-              <div class="val">{level}<span style="font-size:18px;color:#9ca3af"> / Thang 5</span></div>
+              <div class="lbl">AIR QUALITY<br>INDEX (AQI)</div>
+              <div class="val">{level}<span style="font-size:18px;color:#9ca3af"> / Scale of 5</span></div>
             </div>
             """,
             unsafe_allow_html=True,
@@ -48,14 +48,15 @@ def render():
         )
     with c3:
         st.markdown(
-            f'<div class="hero-right">Chất ô nhiễm chính:<br>'
+            f'<div class="hero-right">Main pollutant:<br>'
             f'<b>{POLLUTANT_NAMES[worst_pollutant]}</b></div>',
             unsafe_allow_html=True,
         )
     st.markdown(scale_bar_html(level), unsafe_allow_html=True)
 
     # ── 6 thẻ chỉ số khí quyển chi tiết ──────────────────────────────────
-    st.markdown('<div class="section-h">Chỉ số khí quyển chi tiết · Quy chuẩn QCVN 05:2023/BTNMT</div>',
+    st.markdown('<div class="section-h">Detailed atmospheric indicators · QCVN 05:2023/BTNMT standard</div>'
+                f'<div class="section-sub">Air indicators of the latest hour ({row.name.strftime("%H:%M %d/%m")}, GMT+7) · trend vs. previous hour</div>',
                 unsafe_allow_html=True)
 
     hist24 = df.tail(24)
@@ -63,7 +64,7 @@ def render():
     for col_box, key in zip(cols, POLLUTANT_ORDER):
         plvl = pollutant_level(key, row[key])
         color = AQI_COLORS[plvl]
-        prev = df[key].iloc[-2] if len(df) > 1 else float("nan")
+        prev = df[key].shift(1).loc[row.name]   # giá trị 1 giờ trước giờ mới nhất
         arrow, trend_lbl, trend_cls = trend_arrow(row[key], prev)
         with col_box:
             st.markdown(
@@ -72,7 +73,7 @@ def render():
                   <div class="top">{POLLUTANT_NAMES[key]}
                     <span class="pbadge" style="background:{color}">● {AQI_LABELS[plvl]}</span>
                   </div>
-                  <div class="pval">{row[key]:.1f} <span style="font-size:12px;color:#9ca3af">µg/m³</span></div>
+                  <div class="pval">{row[key]:.1f} <span style="font-size:14px;color:#9ca3af">µg/m³</span></div>
                 </div>
                 """,
                 unsafe_allow_html=True,
@@ -81,7 +82,7 @@ def render():
             st.plotly_chart(sparkline_fig(series, color), width="stretch",
                              config={"displayModeBar": False}, key=f"spark_{key}")
             st.markdown(
-                f'<div class="pfoot">1 giờ qua<span class="{trend_cls}">{arrow} {trend_lbl}</span></div>',
+                f'<div class="pfoot"><span class="{trend_cls}">{arrow} {trend_lbl}</span></div>',
                 unsafe_allow_html=True,
             )
 
@@ -94,15 +95,15 @@ def render():
         if next_level is not None:
             badge = (f'<span class="pbadge" style="background:{AQI_COLORS[next_level]}">'
                       f'● {AQI_LABELS[next_level]} ({next_level})</span>')
-            note = ("Dự kiến duy trì, chưa có biến động lớn." if next_level == level
-                    else "Mô hình dự báo có thay đổi mức AQI so với hiện tại.")
+            note = ("Expected to stay the same, no major change." if next_level == level
+                    else "The model predicts a change in AQI level compared to now.")
         else:
-            badge = '<span class="pbadge" style="background:#9ca3af">● Chưa đủ dữ liệu</span>'
+            badge = '<span class="pbadge" style="background:#9ca3af">● Not enough data</span>'
             note = probs  # thông báo lỗi
         st.markdown(
             f"""
             <div class="info-card">
-              <div class="ihead">🕐 Giờ kế tiếp &nbsp; <span style="color:#9ca3af">Dự phóng máy học</span></div>
+              <div class="ihead">🕐 Next hour</div>
               {badge}
               <div class="inote">{note}</div>
             </div>
@@ -117,14 +118,14 @@ def render():
             wl = int(worst24.loc[worst_idx, "aqi"])
             badge = (f'<span class="pbadge" style="background:{AQI_COLORS[wl]}">'
                       f'● {AQI_LABELS[wl]} ({wl})</span>')
-            note = f"Thời điểm cực đại lúc {worst_idx.strftime('%H:%M %d/%m')} (24 giờ qua)."
+            note = f"Peak at {worst_idx.strftime('%H:%M %d/%m')} (past 24 hours)."
         else:
-            badge = '<span class="pbadge" style="background:#9ca3af">● Chưa đủ dữ liệu</span>'
-            note = "Không đủ dữ liệu AQI trong 24 giờ qua."
+            badge = '<span class="pbadge" style="background:#9ca3af">● Not enough data</span>'
+            note = "Not enough AQI data in the past 24 hours."
         st.markdown(
             f"""
             <div class="info-card">
-              <div class="ihead">⚠️ Tệ nhất 24h qua &nbsp; <span style="color:#9ca3af">Cảnh báo đỉnh ô nhiễm</span></div>
+              <div class="ihead">⚠️ Worst in past 24h &nbsp; <span style="color:#9ca3af">Pollution peak alert</span></div>
               {badge}
               <div class="inote">{note}</div>
             </div>
