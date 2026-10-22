@@ -5,20 +5,27 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
-from common import POLLUTANT_NAMES, POLLUTANT_ORDER, get_data, pollutant_level, AQI_COLORS, AQI_LABELS
+from common import POLLUTANT_NAMES, POLLUTANT_ORDER, get_data, pollutant_level, AQI_COLORS
+from language import aqi_label, lang, t
+
+DAY_OPTIONS = [1, 7, 30]
 
 
 def render():
     df = get_data()
     d_min, d_max_ts = df.index.min(), df.index.max()
 
-    st.markdown('<div class="page-title">🧪 POLLUTANTS</div>', unsafe_allow_html=True)
-    st.markdown('<div class="page-sub">Track each pollutant over time</div>',
-                unsafe_allow_html=True)
+    st.markdown(f'<div class="page-title">{t("poll_title")}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="page-sub">{t("poll_sub")}</div>', unsafe_allow_html=True)
 
-    days = st.radio("Time range", [1, 7, 30], index=1,
-                     format_func=lambda d: {1: "Past 24h", 7: "7 days", 30: "30 days"}[d],
-                     horizontal=True)
+    # Radio lưu lựa chọn dưới dạng chữ đã dịch ("7 ngày"), sang ngôn ngữ khác chữ đó không còn
+    # trong danh sách và bị lỗi. Nên mỗi ngôn ngữ dùng 1 radio riêng (key theo ngôn ngữ),
+    # còn lựa chọn lưu bằng số ngày trong poll_days_value để giữ nguyên khi đổi ngôn ngữ.
+    days = st.radio(t("time_range"), DAY_OPTIONS,
+                     index=DAY_OPTIONS.index(st.session_state.get("poll_days_value", 7)),
+                     format_func=lambda d: t(f"range_{d}"),
+                     horizontal=True, key=f"poll_days_{lang()}")
+    st.session_state.poll_days_value = days
     start = max(d_min, d_max_ts - pd.Timedelta(days=days))
     view = df.loc[start:d_max_ts]
 
@@ -29,11 +36,11 @@ def render():
         with cols[i % 4]:
             st.markdown(
                 f"""<div class="pcard"><div class="top">{POLLUTANT_NAMES[key]}
-                <span class="pbadge" style="background:{AQI_COLORS[plvl]}">● {AQI_LABELS[plvl]}</span></div>
-                <div class="pval">{cur_val:.1f} <span style="font-size:12px;color:#9ca3af">µg/m³</span></div>
+                <span class="pbadge" style="background:{AQI_COLORS[plvl]}">● {aqi_label(plvl)}</span></div>
+                <div class="pval">{cur_val:.1f} <span class="unit">µg/m³</span></div>
                 </div>""" if pd.notna(cur_val) else
                 f"""<div class="pcard"><div class="top">{POLLUTANT_NAMES[key]}</div>
-                <div class="pval" style="color:#9ca3af;font-size:14px">No data</div></div>""",
+                <div class="pval" style="color:#6b7280;font-size:16px">{t("no_data")}</div></div>""",
                 unsafe_allow_html=True,
             )
             fig = go.Figure(go.Scatter(x=view.index, y=view[key], mode="lines",

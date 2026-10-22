@@ -20,7 +20,7 @@ sqlalchemy>=2.0.23
 psycopg2-binary>=2.9.9
 
 # Deployment & Serving
-streamlit>=1.29.0
+streamlit>=1.64.0
 streamlit-autorefresh>=1.0.1
 fastapi>=0.108.0
 uvicorn>=0.25.0
