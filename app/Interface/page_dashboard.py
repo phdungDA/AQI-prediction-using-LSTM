@@ -1,14 +1,15 @@
 # page_dashboard.py
 # Trang Dashboard: tình trạng không khí hiện tại.
 
-import plotly.graph_objects as go
+import pandas as pd
 import streamlit as st
 
 from common import (
-    AQI_ADVICE, AQI_COLORS, AQI_LABELS, POLLUTANT_NAMES, POLLUTANT_ORDER,
-    get_data, latest_row, pollutant_level, predict_next_hour,
-    scale_bar_html, sparkline_fig, trend_arrow,
+    AQI_COLORS, CIGARETTE_PM25, POLLUTANT_NAMES, POLLUTANT_ORDER,
+    confidence_ring_html, get_data, latest_row, pollutant_level, pred_error_text,
+    predict_next_hour, scale_bar_html, trend_arrow,
 )
+from language import aqi_advice, aqi_label, scale_info, t
 
 
 def render():
@@ -17,118 +18,164 @@ def render():
     level = int(row["aqi"])
     worst_pollutant = max(POLLUTANT_ORDER, key=lambda c: pollutant_level(c, row[c]))
 
-    st.markdown('<div class="page-title">CURRENT AIR QUALITY</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="page-title">{t("dash_title")}</div>', unsafe_allow_html=True)
     st.markdown(
-        f'<div class="page-sub">📍 Hanoi · Updated: '
-        f'{row.name.strftime("%H:%M %d/%m/%Y")} (GMT+7)</div>',
+        f'<div class="page-sub">{t("dash_sub", time=row.name.strftime("%H:%M %d/%m/%Y"))}</div>',
         unsafe_allow_html=True,
     )
 
     # ── Thẻ AQI lớn ──────────────────────────────────────────────────────
-    c1, c2, c3 = st.columns([1.1, 2.3, 1.1])
+    c1, c2 = st.columns(2)
     with c1:
         st.markdown(
-            f"""
-            <div class="hero-aqi">
-              <div class="lbl">AIR QUALITY<br>INDEX (AQI)</div>
-              <div class="val">{level}<span style="font-size:18px;color:#9ca3af"> / Scale of 5</span></div>
-            </div>
-            """,
+            f"""<div style="padding-top:6px;">
+                  <div style="font-size:16px;color:#6b7280;font-weight:700;">{t("recommendation")}</div>
+                  <div class="hero-note" style="margin-top:8px;">{aqi_advice(level)}</div>
+                </div>""",
             unsafe_allow_html=True,
         )
     with c2:
         st.markdown(
-            f"""
-            <span class="hero-badge" style="background:{AQI_COLORS[level]}">
-              ● {AQI_LABELS[level]}
-            </span>
-            <div class="hero-note">{AQI_ADVICE[level]}</div>
-            """,
-            unsafe_allow_html=True,
-        )
-    with c3:
-        st.markdown(
-            f'<div class="hero-right">Main pollutant:<br>'
-            f'<b>{POLLUTANT_NAMES[worst_pollutant]}</b></div>',
+            f"""<div style="text-align:right; padding-top:6px;">
+                  <div style="font-size:16px;color:#6b7280;font-weight:600;">{t("main_pollutant")}</div>
+                  <div style="font-size:30px;font-weight:800;color:#1f2937;margin-top:6px;">
+                    {POLLUTANT_NAMES[worst_pollutant]}
+                  </div>
+                </div>""",
             unsafe_allow_html=True,
         )
     st.markdown(scale_bar_html(level), unsafe_allow_html=True)
-
     # ── 6 thẻ chỉ số khí quyển chi tiết ──────────────────────────────────
-    st.markdown('<div class="section-h">Detailed atmospheric indicators · QCVN 05:2023/BTNMT standard</div>'
-                f'<div class="section-sub">Air indicators of the latest hour ({row.name.strftime("%H:%M %d/%m")}, GMT+7) · trend vs. previous hour</div>',
-                unsafe_allow_html=True)
+    st.markdown(f'<div class="section-h">{t("indicators_h")}</div>', unsafe_allow_html=True)
 
-    hist24 = df.tail(24)
     cols = st.columns(len(POLLUTANT_ORDER))
     for col_box, key in zip(cols, POLLUTANT_ORDER):
-        plvl = pollutant_level(key, row[key])
-        color = AQI_COLORS[plvl]
+        val = row[key]
+        if pd.isna(val):
+            color, badge_txt, val_txt = "#9ca3af", t("no_data"), "—"
+        else:
+            plvl = pollutant_level(key, val)
+            color, badge_txt, val_txt = AQI_COLORS[plvl], aqi_label(plvl), f"{val:.1f}"
         prev = df[key].shift(1).loc[row.name]   # giá trị 1 giờ trước giờ mới nhất
-        arrow, trend_lbl, trend_cls = trend_arrow(row[key], prev)
+        arrow, trend_lbl, trend_cls = trend_arrow(val, prev)
+        if pd.isna(val) or pd.isna(prev):
+            trend_txt = t("no_prev_hour")
+        else:
+            # So với giờ trước: vd "▲ rising +4.2 µg/m³"
+            trend_txt = f'{arrow} {trend_lbl} {val - prev:+.1f} µg/m³'
         with col_box:
             st.markdown(
                 f"""
                 <div class="pcard">
                   <div class="top">{POLLUTANT_NAMES[key]}
-                    <span class="pbadge" style="background:{color}">● {AQI_LABELS[plvl]}</span>
+                    <span class="pbadge" style="background:{color}">● {badge_txt}</span>
                   </div>
-                  <div class="pval">{row[key]:.1f} <span style="font-size:14px;color:#9ca3af">µg/m³</span></div>
+                  <div class="pval">{val_txt} <span class="unit">µg/m³</span></div>
+                  <div class="pfoot"><span class="{trend_cls}">{trend_txt}</span></div>
                 </div>
                 """,
                 unsafe_allow_html=True,
             )
-            series = hist24[key].interpolate(limit_direction="both")
-            st.plotly_chart(sparkline_fig(series, color), width="stretch",
-                             config={"displayModeBar": False}, key=f"spark_{key}")
-            st.markdown(
-                f'<div class="pfoot"><span class="{trend_cls}">{arrow} {trend_lbl}</span></div>',
-                unsafe_allow_html=True,
-            )
 
-    # ── 2 khối gợi ý: giờ kế tiếp / tệ nhất 24h ──────────────────────────
+    # ── 2 khối: dự đoán giờ kế tiếp / số điếu thuốc 24h qua ─────────────
     st.markdown("<br>", unsafe_allow_html=True)
     i1, i2 = st.columns(2)
 
-    next_level, probs = predict_next_hour(df)
+    next_level, probs = predict_next_hour()
     with i1:
         if next_level is not None:
             badge = (f'<span class="pbadge" style="background:{AQI_COLORS[next_level]}">'
-                      f'● {AQI_LABELS[next_level]} ({next_level})</span>')
-            note = ("Expected to stay the same, no major change." if next_level == level
-                    else "The model predicts a change in AQI level compared to now.")
+                      f'● {aqi_label(next_level)} ({next_level})</span>')
+            if next_level > level:
+                change = t("change_worse", a=aqi_label(level), b=aqi_label(next_level))
+            elif next_level < level:
+                change = t("change_better", a=aqi_label(level), b=aqi_label(next_level))
+            else:
+                change = t("change_same", a=aqi_label(level))
+            note = f"<b>{change}</b>"
+            ring = confidence_ring_html(float(max(probs)) * 100, AQI_COLORS[next_level])
         else:
-            badge = '<span class="pbadge" style="background:#9ca3af">● Not enough data</span>'
-            note = probs  # thông báo lỗi
+            badge = f'<span class="pbadge" style="background:#9ca3af">● {t("not_enough_badge")}</span>'
+            note = pred_error_text(probs)  # probs lúc này là mã lỗi
+            ring = ""
         st.markdown(
             f"""
             <div class="info-card">
-              <div class="ihead">🕐 Next hour</div>
-              {badge}
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;">
+                <div>
+                  <div class="ihead">{t("next_hour")}</div>
+                  {badge}
+                  <div class="inote">{note}</div>
+                </div>{ring}
+              </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    pm24 = df.tail(24)["pm2_5"].dropna()
+    with i2:
+        if len(pm24):
+            # Trung bình PM2.5 trong 24h ÷ 22 = số điếu thuốc tương đương trong 24h đó
+            cigs = pm24.mean() / CIGARETTE_PM25
+            value = t("cig_one" if round(cigs, 1) == 1 else "cig_many", n=f"{cigs:.1f}")
+            note = t("cig_note", pm=f"{pm24.mean():.0f}", c=CIGARETTE_PM25)
+        else:
+            value = "—"
+            note = t("no_pm_24h")
+        st.markdown(
+            f"""
+            <div class="info-card">
+              <div class="ihead">{t("past_24h")}</div>
+              <div class="ival">{value}</div>
               <div class="inote">{note}</div>
             </div>
             """,
             unsafe_allow_html=True,
         )
 
-    worst24 = df.tail(24)
-    worst_idx = worst24["aqi"].idxmax() if worst24["aqi"].notna().any() else None
-    with i2:
-        if worst_idx is not None:
-            wl = int(worst24.loc[worst_idx, "aqi"])
-            badge = (f'<span class="pbadge" style="background:{AQI_COLORS[wl]}">'
-                      f'● {AQI_LABELS[wl]} ({wl})</span>')
-            note = f"Peak at {worst_idx.strftime('%H:%M %d/%m')} (past 24 hours)."
-        else:
-            badge = '<span class="pbadge" style="background:#9ca3af">● Not enough data</span>'
-            note = "Not enough AQI data in the past 24 hours."
+    # ── Quy trình tính confidence (chỉ hiện khi có dự đoán) ─────────────
+    if next_level is not None:
+        win_start = row.name - pd.Timedelta(hours=23)
+        conf = float(max(probs)) * 100
+        steps = [
+            (t("step1_t"), t("step1_d", a=f"{win_start:%H:%M %d/%m}", b=f"{row.name:%H:%M %d/%m}")),
+            (t("step2_t"), t("step2_d")),
+            (t("step3_t"), t("step3_d")),
+            (t("step4_t"), t("step4_d", lvl=aqi_label(next_level), pct=f"{conf:.0f}")),
+        ]
+        steps_html = "".join(
+            f'<div class="step"><div class="snum">{i}</div><div class="stitle">{title}</div>'
+            f'<div class="stext">{desc}</div></div>'
+            for i, (title, desc) in enumerate(steps, start=1)
+        )
+        bars_html = "".join(
+            f'<div class="prow{" top" if lvl == next_level else ""}">'
+            f'<span>{aqi_label(lvl)}</span>'
+            f'<span class="pbar"><i style="width:{p * 100:.1f}%;background:{AQI_COLORS[lvl]}"></i></span>'
+            f'<span class="pct">{p * 100:.1f}%</span></div>'
+            for lvl, p in zip(range(1, 6), probs)
+        )
+        st.markdown(f'<div class="section-h">{t("conf_h")}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="steps">{steps_html}</div>', unsafe_allow_html=True)
         st.markdown(
-            f"""
-            <div class="info-card">
-              <div class="ihead">⚠️ Worst in past 24h &nbsp; <span style="color:#9ca3af">Pollution peak alert</span></div>
-              {badge}
-              <div class="inote">{note}</div>
-            </div>
-            """,
+            f'<div class="probs"><div class="stitle">{t("model_output")}</div>{bars_html}</div>',
             unsafe_allow_html=True,
         )
+
+    # ── Giải thích thang đo AQI (cuối trang Dashboard) ──────────────────
+    st.markdown(f'<div class="section-h">{t("scale_h")}</div>', unsafe_allow_html=True)
+    # HTML viết liền 1 dòng mỗi hàng: tránh dòng thụt lề bị markdown hiểu thành khối code
+    rows_html = "".join(
+        f'<tr><td><span class="pbadge" style="background:{AQI_COLORS[lvl]}">{lvl}</span></td>'
+        f'<td class="cat">{aqi_label(lvl)}</td>'
+        f'<td>{scale_info(lvl)[0]}</td><td>{scale_info(lvl)[1]}</td></tr>'
+        for lvl in range(1, 6)
+    )
+    st.markdown(
+        '<div class="scale-wrap"><table class="scale-table"><thead><tr>'
+        f'<th>{t("th_level")}</th><th>{t("th_category")}</th>'
+        f'<th>{t("th_meaning")}</th><th>{t("th_rec")}</th>'
+        f'</tr></thead><tbody>{rows_html}</tbody></table></div>',
+        unsafe_allow_html=True,
+    )

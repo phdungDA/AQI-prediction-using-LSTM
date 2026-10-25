@@ -1,0 +1,6 @@
+✅ Bảng air_quality đã sẵn sàng.
+
+[2026-10-22 13:39:14 UTC] Bắt đầu lấy dữ liệu mới...
+   [  1/1] 2026-10-22 13:00:01 → 2026-10-22 13:39:14 : 0 bản ghi (tổng unique: 0)
+   API chưa trả về bản ghi mới (dữ liệu cập nhật theo giờ).
+⏰ Scheduler đã chạy: cập nhật mỗi 30 phút. Nhấn Ctrl+C để dừng.

@@ -1,31 +1,74 @@
 # app.py
-# Entry point: cấu hình trang, sidebar, điều hướng giữa 3 file giao diện.
+# Entry point: cấu hình trang, sidebar, điều hướng giữa 3 trang giao diện.
 # Chạy: streamlit run app.py
 
 import streamlit as st
 
 from common import inject_css, last_update_text
+from language import DEFAULT_LANG, t
 import page_dashboard
 import page_history
-import page_forecast
 import page_pollutants
 
-st.set_page_config(page_title="AQI Hà Nội", page_icon="🌫️", layout="wide")
+st.set_page_config(page_title="AQI Ha Noi", page_icon="🌫️", layout="wide")
 inject_css()
 
-PAGE_ICONS = {"Dashboard": "🏠", "History": "🕐", "Forecast 24h": "📈", "Pollutants": "🌫️"}
+PAGE_ICONS = {"Dashboard": "🏠", "History": "🕐", "Pollutants": "🌫️"}
 PAGES = list(PAGE_ICONS)
-if "page" not in st.session_state:
+if st.session_state.get("page") not in PAGES:   # lần đầu vào, hoặc trang cũ đã bị bỏ
     st.session_state.page = "Dashboard"
+if "lang" not in st.session_state:
+    st.session_state.lang = DEFAULT_LANG
+
+REFRESH_MINUTES = 30
 
 with st.sidebar:
-    st.markdown("### 🌫️ AQI Hà Nội")
-    st.caption("Hanoi")
+    # ── Auto refresh ──────────────────────────────────────────────────────
+    # Đặt trước mọi chỗ đọc dữ liệu: lần chạy do auto refresh kích hoạt phải xoá cache
+    # trước, nếu không trang vẫn hiện dữ liệu cũ còn trong cache.
+    # debounce=False: mặc định thư viện đếm lại từ đầu mỗi khi trang chạy lại (bấm nút,
+    # đổi trang...), nên ai thao tác trong vòng 30 phút thì trang không bao giờ tự refresh.
+    if st.session_state.get("auto_refresh_on", True):
+        try:
+            from streamlit_autorefresh import st_autorefresh
+            count = st_autorefresh(interval=REFRESH_MINUTES * 60 * 1000,
+                                   debounce=False, key="auto_refresh")
+            if count > st.session_state.get("auto_refresh_count", 0):
+                st.session_state.auto_refresh_count = count
+                st.cache_data.clear()
+        except ImportError:
+            st.caption(t("autorefresh_missing"))
+
+    st.markdown(
+        f"""
+        <div style="display:flex;align-items:center;gap:12px;padding:4px 0 8px;">
+          <svg width="56" height="56" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="200" cy="200" r="195" fill="white" stroke="#1f2937" stroke-width="3"/>
+            <path d="M214.2,37.6 A163,163 0 0,1 350.1,136.3" stroke="#2e9e5b" stroke-width="36" fill="none" stroke-linecap="round"/>
+            <path d="M358.8,163.3 A163,163 0 0,1 307.0,323.0" stroke="#9bc53d" stroke-width="36" fill="none" stroke-linecap="round"/>
+            <path d="M283.9,339.7 A163,163 0 0,1 116.1,339.7" stroke="#f5b400" stroke-width="36" fill="none" stroke-linecap="round"/>
+            <path d="M93.0,323.0 A163,163 0 0,1 41.2,163.3" stroke="#ee7d2d" stroke-width="36" fill="none" stroke-linecap="round"/>
+            <path d="M49.9,136.3 A163,163 0 0,1 185.8,37.6" stroke="#d64545" stroke-width="36" fill="none" stroke-linecap="round"/>
+            <text x="200" y="218" text-anchor="middle" font-family="sans-serif" font-size="82" font-weight="800" fill="#1f2937">AQI</text>
+          </svg>
+          <div>
+            <div style="font-size:22px;font-weight:800;color:#1f2937;line-height:1.2;">AQI Hà Nội</div>
+            <div style="font-size:15px;color:#6b7280;">{t("app_sub")}</div>
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # Nút đổi ngôn ngữ: nhãn là ngôn ngữ sẽ chuyển sang (đang tiếng Việt thì hiện "English")
+    if st.button(t("switch_lang"), width="stretch", key="switch_lang"):
+        st.session_state.lang = "en" if st.session_state.lang == "vi" else "vi"
+        st.rerun()
     st.markdown("---")
 
     for p in PAGES:
         if st.button(
-            f"{PAGE_ICONS[p]}  {p}", width="stretch",
+            f"{PAGE_ICONS[p]}  {t('nav_' + p)}", width="stretch",
             type="primary" if st.session_state.page == p else "secondary",
             key=f"nav_{p}",
         ):
@@ -33,30 +76,22 @@ with st.sidebar:
             st.rerun()
 
     st.markdown("---")
-    st.caption("🕐 Latest data")
+    st.caption(t("latest_data"))
     st.write(last_update_text())
 
-    if st.button("🔄 Refresh data", width="stretch"):
+    if st.button(t("refresh"), width="stretch", key="refresh_data"):
         st.cache_data.clear()
         st.rerun()
 
-    auto = st.checkbox("Auto refresh (60 min)", value=True)
-    if auto:
-        try:
-            from streamlit_autorefresh import st_autorefresh
-            st_autorefresh(interval=60 * 60 * 1000, key="auto_refresh")
-        except ImportError:
-            st.caption("⚠️ Requires `pip install streamlit-autorefresh`")
+    st.checkbox(t("auto_refresh", m=REFRESH_MINUTES), value=True, key="auto_refresh_on")
 
     st.markdown("---")
-    st.caption("Data source: OpenWeather")
+    st.caption(t("data_source"))
 
 # ── Router ────────────────────────────────────────────────────────────────────
 if st.session_state.page == "Dashboard":
     page_dashboard.render()
 elif st.session_state.page == "History":
     page_history.render()
-elif st.session_state.page == "Forecast 24h":
-    page_forecast.render()
 else:
     page_pollutants.render()
