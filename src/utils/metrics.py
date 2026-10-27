@@ -4,28 +4,39 @@ Các hàm tính chỉ số đánh giá cho bài toán phân loại AQI (5 lớp)
 
 import numpy as np
 from sklearn.metrics import (
-    accuracy_score, precision_score, recall_score, f1_score,
+    accuracy_score, balanced_accuracy_score,
+    precision_score, recall_score, f1_score,
     confusion_matrix, classification_report,
 )
 
 AQI_LABELS = ["Good", "Fair", "Moderate", "Poor", "Very Poor"]
 
 
-def compute_metrics(y_true: np.ndarray, y_pred: np.ndarray, average: str = "macro") -> dict:
+def compute_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
     """
-    Tính accuracy, precision, recall, f1 (macro-average để không thiên vị lớp đa số).
+    Tính đủ bộ chỉ số cho bài toán phân loại AQI 5 lớp, có mất cân bằng lớp:
+      - accuracy          : tỉ lệ đúng thô (dễ bị lớp đa số chi phối, chỉ tham khảo)
+      - balanced_accuracy  : trung bình recall từng lớp — phản ánh đúng việc model
+                             có đoán tốt cả lớp hiếm (vd Very Poor) hay chỉ ăn điểm
+                             nhờ đoán đúng lớp đa số
+      - precision/recall_macro : trung bình không trọng số qua các lớp (mỗi lớp quan
+                             trọng như nhau, bất kể số lượng mẫu)
+      - f1_macro           : macro-F1 — chỉ số chính để so sánh model khi lớp lệch
+      - f1_weighted        : weighted-F1 — trung bình F1 có trọng số theo support,
+                             phản ánh hiệu năng tổng thể trên phân bố lớp thực tế
 
     Tham số:
         y_true, y_pred : mảng nhãn (0..4)
-        average        : kiểu trung bình cho precision/recall/f1 ("macro"/"weighted"/"micro")
 
     Trả về: dict các chỉ số
     """
     return {
         "accuracy": float(accuracy_score(y_true, y_pred)),
-        "precision": float(precision_score(y_true, y_pred, average=average, zero_division=0)),
-        "recall": float(recall_score(y_true, y_pred, average=average, zero_division=0)),
-        "f1": float(f1_score(y_true, y_pred, average=average, zero_division=0)),
+        "balanced_accuracy": float(balanced_accuracy_score(y_true, y_pred)),
+        "precision_macro": float(precision_score(y_true, y_pred, average="macro", zero_division=0)),
+        "recall_macro": float(recall_score(y_true, y_pred, average="macro", zero_division=0)),
+        "f1_macro": float(f1_score(y_true, y_pred, average="macro", zero_division=0)),
+        "f1_weighted": float(f1_score(y_true, y_pred, average="weighted", zero_division=0)),
     }
 
 
