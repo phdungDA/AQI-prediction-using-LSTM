@@ -1,95 +1,84 @@
 """
-Đánh giá model LSTM đã train trên tập test.
+Đánh giá model LSTM đã train.
+
+Mặc định đánh giá trên tập VALIDATION — dùng kết quả này để so sánh
+cấu hình/kiến trúc (vd LSTM vs BiLSTM vs Random Forest). Tập TEST chỉ nên
+chạy MỘT LẦN DUY NHẤT, sau khi đã chốt model cuối cùng.
+
 Chạy từ thư mục gốc project:
-    python src/models/evaluate.py
+    python src/models/evaluate.py                # validation (mặc định)
+    python src/models/evaluate.py --split test    # chỉ khi đã chốt model cuối cùng
+    python src/models/evaluate.py --split both    # chạy cả val và test
+
+Kết quả lưu vào models/:
+    eval_metrics_lstm_{val|test}.json
+    confusion_matrix_lstm_{val|test}.png
 """
 
 import os
 import sys
-import json
+import argparse
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
 import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
 from tensorflow.keras.models import load_model
 
 from src.data.preprocess import run_preprocessing
-from src.utils.metrics import (
-    compute_metrics, get_confusion_matrix, get_classification_report,
-    class_distribution, AQI_LABELS,
-)
+from src.utils.eval_report import generate_evaluation_report
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 MODEL_PATH   = os.path.join(PROJECT_ROOT, "models", "lstm_baseline.h5")
 OUTPUT_DIR   = os.path.join(PROJECT_ROOT, "models")
+MODEL_NAME   = "lstm"
 
 
-def evaluate(model_path: str = MODEL_PATH):
+def evaluate(model_path: str = MODEL_PATH, split: str = "val"):
+    """
+    split="val"  (mặc định) : dùng để so sánh/chọn cấu hình, kiến trúc.
+    split="test"            : chỉ chạy khi đã chốt model.
+    """
+    if split not in ("val", "test"):
+        raise ValueError('split phải là "val" hoặc "test"')
+
+    if split == "test":
+        print("⚠️  Bạn đang đánh giá trên tập TEST.")
+        print("    Chỉ làm việc này khi đã CHỐT model cuối cùng — không dùng")
+        print("    kết quả test để so sánh hay chọn lại cấu hình/kiến trúc.\n")
+
     # ── 1. Load model + dữ liệu ───────────────────────────────────────────
     print("=" * 55)
-    print("  Load model & dữ liệu test")
+    print(f"  [{MODEL_NAME}] Load model & dữ liệu {split.upper()}")
     print("=" * 55)
     if not os.path.exists(model_path):
         raise FileNotFoundError(f"Không tìm thấy model tại '{model_path}'. Hãy chạy train.py trước.")
 
     model = load_model(model_path)
     X_train, y_train, X_val, y_val, X_test, y_test, scaler = run_preprocessing()
-    print(f"✅ X_test: {X_test.shape} | y_test: {y_test.shape}")
+
+    X_eval, y_eval = (X_val, y_val) if split == "val" else (X_test, y_test)
+    print(f"✅ X_{split}: {X_eval.shape} | y_{split}: {y_eval.shape}")
 
     # ── 2. Predict ─────────────────────────────────────────────────────────
     print("\n" + "=" * 55)
-    print("  Dự đoán trên tập test")
+    print(f"  Dự đoán trên tập {split.upper()}")
     print("=" * 55)
-    y_pred_prob = model.predict(X_test, verbose=0)
-    y_pred = np.argmax(y_pred_prob, axis=1)
+    y_pred = np.argmax(model.predict(X_eval, verbose=0), axis=1)
 
-    # ── 3. Tính metrics ────────────────────────────────────────────────────
-    metrics = compute_metrics(y_test, y_pred)
-    print("\n📊 Chỉ số tổng quan:")
-    for k, v in metrics.items():
-        print(f"   {k:10}: {v:.4f}")
-
-    print("\n📊 Phân bố lớp trong tập test (kiểm tra imbalance):")
-    for k, v in class_distribution(y_test).items():
-        print(f"   {k:12}: {v}")
-
-    print("\n📊 Classification report:")
-    report = get_classification_report(y_test, y_pred)
-    print(report)
-
-    # ── 4. Confusion matrix ───────────────────────────────────────────────
-    cm = get_confusion_matrix(y_test, y_pred)
-    print("\n📊 Confusion matrix:")
-    print(cm)
-
-    # ── 5. Lưu kết quả ─────────────────────────────────────────────────────
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
-
-    metrics_path = os.path.join(OUTPUT_DIR, "eval_metrics.json")
-    with open(metrics_path, "w", encoding="utf-8") as f:
-        json.dump({
-            "metrics": metrics,
-            "class_distribution": class_distribution(y_test),
-            "classification_report": report,
-        }, f, indent=2, ensure_ascii=False)
-    print(f"\n✅ Đã lưu metrics: {metrics_path}")
-
-    fig, ax = plt.subplots(figsize=(6, 5))
-    sns.heatmap(cm, annot=True, fmt="d", cmap="Blues",
-                xticklabels=AQI_LABELS, yticklabels=AQI_LABELS, ax=ax)
-    ax.set_xlabel("Dự đoán")
-    ax.set_ylabel("Thực tế")
-    ax.set_title("Confusion Matrix - LSTM Baseline")
-    plt.tight_layout()
-
-    cm_path = os.path.join(OUTPUT_DIR, "confusion_matrix.png")
-    plt.savefig(cm_path, dpi=150)
-    print(f"✅ Đã lưu confusion matrix: {cm_path}")
-
-    return metrics, cm
+    # ── 3. Báo cáo + lưu kết quả (hàm dùng chung) ──────────────────────────
+    return generate_evaluation_report(
+        y_true=y_eval, y_pred=y_pred, output_dir=OUTPUT_DIR,
+        split=split, model_name=MODEL_NAME,
+        title=f"Confusion Matrix - LSTM ({split})",
+    )
 
 
 if __name__ == "__main__":
-    evaluate()
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--split", choices=["val", "test", "both"], default="val",
+        help='"val" (mặc định), "test" (chỉ dùng khi đã chốt model) hoặc "both" (chạy cả hai).',
+    )
+    args = parser.parse_args()
+    for s in (["val", "test"] if args.split == "both" else [args.split]):
+        evaluate(split=s)
