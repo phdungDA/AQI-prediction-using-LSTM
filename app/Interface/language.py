@@ -61,15 +61,15 @@ VI_WEEKDAYS = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"]
 TEXT = {
     # ── Sidebar ───────────────────────────────────────────────────────────
     "app_sub":        {"en": "Hanoi air quality", "vi": "Chất lượng không khí"},
-    "switch_lang":    {"en": "🌐 Tiếng Việt", "vi": "🌐 English"},
+    "switch_lang":    {"en": "Tiếng Việt", "vi": "English"},
     "nav_Dashboard":  {"en": "Dashboard", "vi": "Tổng quan"},
     "nav_History":    {"en": "History", "vi": "Lịch sử"},
     "nav_Pollutants": {"en": "Pollutants", "vi": "Chất ô nhiễm"},
-    "latest_data":    {"en": "🕐 Latest data", "vi": "🕐 Dữ liệu mới nhất"},
-    "refresh":        {"en": "🔄 Refresh data", "vi": "🔄 Làm mới dữ liệu"},
-    "auto_refresh":   {"en": "Auto refresh ({m} min)", "vi": "Tự làm mới ({m} phút)"},
-    "autorefresh_missing": {"en": "⚠️ Auto refresh requires `pip install streamlit-autorefresh`",
-                            "vi": "⚠️ Cần cài `pip install streamlit-autorefresh` để tự làm mới"},
+    "latest_data":    {"en": "Latest data", "vi": "Dữ liệu mới nhất"},
+    "refresh":        {"en": "Refresh data", "vi": "Làm mới dữ liệu"},
+    "auto_refresh":   {"en": "Auto update on new data", "vi": "Tự cập nhật khi có dữ liệu mới"},
+    "autorefresh_missing": {"en": "Auto refresh requires `pip install streamlit-autorefresh`",
+                            "vi": "Cần cài `pip install streamlit-autorefresh` để tự làm mới"},
     "data_source":    {"en": "Data source: OpenWeather", "vi": "Nguồn dữ liệu: OpenWeather"},
     "no_data_yet":    {"en": "No data yet", "vi": "Chưa có dữ liệu"},
 
@@ -102,46 +102,48 @@ TEXT = {
 
     # ── Dashboard ─────────────────────────────────────────────────────────
     "dash_title":     {"en": "CURRENT AIR QUALITY", "vi": "CHẤT LƯỢNG KHÔNG KHÍ HIỆN TẠI"},
-    "dash_sub":       {"en": "📍 Hanoi · Updated: {time} (GMT+7)", "vi": "📍 Hà Nội · Cập nhật: {time} (GMT+7)"},
+    "dash_sub":       {"en": "Hanoi · Updated: {time} (GMT+7)", "vi": "Hà Nội · Cập nhật: {time} (GMT+7)"},
     "recommendation": {"en": "RECOMMENDATION", "vi": "KHUYẾN NGHỊ"},
     "main_pollutant": {"en": "Main pollutant", "vi": "Chất ô nhiễm chính"},
     "indicators_h":   {"en": "Main Air Quality Indicators · OpenWeather standard",
                        "vi": "Chỉ số chất lượng không khí chính · Chuẩn OpenWeather"},
     "no_prev_hour":   {"en": "No data for the previous hour", "vi": "Không có dữ liệu giờ trước"},
-    "next_hour":      {"en": "🕐 Next hour", "vi": "🕐 Giờ tới"},
+    "next_hour":      {"en": "Next hour", "vi": "Giờ tới"},
     "change_worse":   {"en": "Getting worse: {a} → {b}.", "vi": "Xấu đi: {a} → {b}."},
     "change_better":  {"en": "Improving: {a} → {b}.", "vi": "Cải thiện: {a} → {b}."},
     "change_same":    {"en": "Staying at {a}.", "vi": "Giữ ở mức {a}."},
     "not_enough_badge": {"en": "Not enough data", "vi": "Chưa đủ dữ liệu"},
-    "past_24h":       {"en": "🚬 Past 24 hours", "vi": "🚬 24 giờ qua"},
-    "cig_one":        {"en": "≈ {n} cigarette", "vi": "≈ {n} điếu thuốc"},
-    "cig_many":       {"en": "≈ {n} cigarettes", "vi": "≈ {n} điếu thuốc"},
-    "cig_note":       {"en": "PM2.5 avg {pm} µg/m³ · 1 cigarette ≈ {c} µg/m³ for 24 h (Berkeley Earth)",
-                       "vi": "PM2.5 trung bình {pm} µg/m³ · 1 điếu ≈ {c} µg/m³ trong 24 giờ (Berkeley Earth)"},
-    "no_pm_24h":      {"en": "No PM2.5 data in the past 24 hours.",
-                       "vi": "Không có dữ liệu PM2.5 trong 24 giờ qua."},
-    "conf_h":         {"en": "How the confidence is calculated", "vi": "Cách tính độ tin cậy"},
-    "step1_t":        {"en": "24 hours of data", "vi": "Dữ liệu 24 giờ"},
-    "step1_d":        {"en": "Hourly readings of 8 pollutants (CO, NO, NO₂, O₃, SO₂, PM2.5, PM10, NH₃) "
-                             "from {a} to {b}: a 24 × 8 table.",
-                       "vi": "Số đo theo giờ của 8 chất ô nhiễm (CO, NO, NO₂, O₃, SO₂, PM2.5, PM10, NH₃) "
-                             "từ {a} đến {b}: một bảng 24 × 8."},
-    "step2_t":        {"en": "Scaling", "vi": "Chuẩn hoá"},
-    "step2_d":        {"en": "Each pollutant is rescaled to 0–1 with the same scaler used during training, "
-                             "so the model sees values on the scale it learned.",
-                       "vi": "Mỗi chất được đưa về thang 0–1 bằng đúng bộ chuẩn hoá đã dùng khi huấn luyện, "
-                             "để model nhận giá trị trên đúng thang nó đã học."},
-    "step3_t":        {"en": "LSTM model", "vi": "Mô hình LSTM"},
-    "step3_d":        {"en": "The LSTM reads the 24 hours in order, then a softmax layer outputs one "
-                             "probability for each of the 5 AQI levels. They add up to 100%.",
-                       "vi": "LSTM đọc lần lượt 24 giờ, sau đó lớp softmax cho ra xác suất của từng mức "
-                             "trong 5 mức AQI. Tổng các xác suất bằng 100%."},
-    "step4_t":        {"en": "Confidence", "vi": "Độ tin cậy"},
-    "step4_d":        {"en": "The level with the highest probability is the prediction ({lvl}), "
-                             "and that probability is the confidence ({pct}%).",
-                       "vi": "Mức có xác suất cao nhất là kết quả dự đoán ({lvl}), "
-                             "và xác suất đó chính là độ tin cậy ({pct}%)."},
-    "model_output":   {"en": "Model output for the next hour", "vi": "Kết quả của model cho giờ tới"},
+    "cig_head":       {"en": "🚬 In cigarettes", "vi": "🚬 Quy ra thuốc lá"},
+    "cig_one":        {"en": "≈ {n} cigarette / day", "vi": "≈ {n} điếu thuốc / ngày"},
+    "cig_many":       {"en": "≈ {n} cigarettes / day", "vi": "≈ {n} điếu thuốc / ngày"},
+    "cig_note":       {"en": "Breathing the current air for a whole day is like smoking this many cigarettes.",
+                       "vi": "Hít thở không khí như hiện tại suốt 1 ngày tương đương hút ngần ấy điếu thuốc."},
+    "no_pm_now":      {"en": "No PM2.5 reading for the latest hour.",
+                       "vi": "Giờ mới nhất không có số đo PM2.5."},
+    # Viết cho người không biết gì về IT/học máy: không dùng thuật ngữ (LSTM, softmax, chuẩn hoá...)
+    "conf_h":         {"en": "How is the confidence worked out?", "vi": "Độ tin cậy được tính thế nào?"},
+    "step1_t":        {"en": "Look back 24 hours", "vi": "Xem lại 24 giờ qua"},
+    "step1_d":        {"en": "We take the hourly readings of fine dust and other polluting gases "
+                             "from {a} to {b}.",
+                       "vi": "Lấy số đo bụi mịn và các khí ô nhiễm của từng giờ, từ {a} đến {b}."},
+    "step2_t":        {"en": "Put on one scale", "vi": "Đưa về cùng thước đo"},
+    "step2_d":        {"en": "Each pollutant has its own units and range, so all are converted to the "
+                             "same scale to be compared fairly.",
+                       "vi": "Mỗi chất có đơn vị và độ lớn khác nhau, nên được quy về cùng một thang "
+                             "để so sánh công bằng."},
+    "step3_t":        {"en": "Compare with the past", "vi": "So với những lần trước"},
+    "step3_d":        {"en": "The model has learned from past years of Hanoi air data. It compares the "
+                             "last 24 hours with similar situations before, then splits 100% across the 5 levels.",
+                       "vi": "Mô hình đã học từ dữ liệu không khí Hà Nội các năm trước. Nó so 24 giờ vừa qua "
+                             "với những lần diễn biến tương tự, rồi chia 100% cho 5 mức."},
+    "step4_t":        {"en": "Pick the biggest share", "vi": "Chọn mức nhiều % nhất"},
+    "step4_d":        {"en": "The level with the biggest share is the forecast ({lvl}); its share is the "
+                             "confidence ({pct}%). Higher means the model is more sure, not that it is "
+                             "guaranteed to be right.",
+                       "vi": "Mức được chia nhiều nhất là dự đoán ({lvl}), phần trăm của mức đó là độ tin cậy "
+                             "({pct}%). Càng cao thì mô hình càng chắc, nhưng không có nghĩa là chắc chắn đúng."},
+    "model_output":   {"en": "How the model split 100% for the next hour",
+                       "vi": "Mô hình chia 100% cho giờ tới như sau"},
     "scale_h":        {"en": "AQI Scale Reference", "vi": "Bảng giải thích thang AQI"},
     "th_level":       {"en": "Level", "vi": "Mức"},
     "th_category":    {"en": "Category", "vi": "Phân loại"},
@@ -149,9 +151,9 @@ TEXT = {
     "th_rec":         {"en": "Recommendation", "vi": "Khuyến nghị"},
 
     # ── History ───────────────────────────────────────────────────────────
-    "hist_title":     {"en": "⏱ HISTORICAL MONITORING REPORT", "vi": "⏱ BÁO CÁO LỊCH SỬ QUAN TRẮC"},
-    "hist_sub":       {"en": "📍 Hanoi air quality history · Data from {a} to {b} (GMT+7)",
-                       "vi": "📍 Lịch sử chất lượng không khí Hà Nội · Dữ liệu từ {a} đến {b} (GMT+7)"},
+    "hist_title":     {"en": "HISTORICAL MONITORING REPORT", "vi": "BÁO CÁO LỊCH SỬ QUAN TRẮC"},
+    "hist_sub":       {"en": "Hanoi air quality history · Data from {a} to {b} (GMT+7)",
+                       "vi": "Lịch sử chất lượng không khí Hà Nội · Dữ liệu từ {a} đến {b} (GMT+7)"},
     "date_range":     {"en": "Date range", "vi": "Khoảng ngày"},
     "pick_both":      {"en": "Select both a start date and an end date.",
                        "vi": "Hãy chọn cả ngày bắt đầu và ngày kết thúc."},
@@ -165,12 +167,12 @@ TEXT = {
     "none":           {"en": "None", "vi": "Không có"},
     "no_poor_hours":  {"en": "No hour reached {poor} in this period",
                        "vi": "Không có giờ nào ở mức {poor} trong khoảng này"},
-    "polluted_sub":   {"en": "{n} of {h} hours {poor} or worse · PM2.5 avg {pm} µg/m³",
-                       "vi": "{n}/{h} giờ ở mức {poor} trở lên · PM2.5 trung bình {pm} µg/m³"},
-    "no_clean_day":   {"en": "No day had mostly {good} or {fair} air without any {poor} hour",
-                       "vi": "Không có ngày nào phần lớn ở mức {good}/{fair} mà không có giờ {poor}"},
-    "clean_sub":      {"en": "{n} of {h} hours {good} or {fair} · PM2.5 avg {pm} µg/m³",
-                       "vi": "{n}/{h} giờ ở mức {good} hoặc {fair} · PM2.5 trung bình {pm} µg/m³"},
+    "polluted_sub":   {"en": "{n} of {h} hours {poor} or worse",
+                       "vi": "{n}/{h} giờ ở mức {poor} trở lên"},
+    "no_clean_day":   {"en": "No day at {good}/{fair} level",
+                       "vi": "Không có ngày nào ở mức {good}/{fair}"},
+    "clean_sub":      {"en": "{n} of {h} hours {good} or {fair}",
+                       "vi": "{n}/{h} giờ ở mức {good} hoặc {fair}"},
     "ties_one":       {"en": " · +{n} more day tied", "vi": " · +{n} ngày khác bằng điểm"},
     "ties_many":      {"en": " · +{n} more days tied", "vi": " · +{n} ngày khác bằng điểm"},
     "sensor":         {"en": "Sensor reliability", "vi": "Độ đầy đủ dữ liệu"},
@@ -192,10 +194,10 @@ TEXT = {
                        "vi": "Hãy chọn ít nhất một chất để hiển thị biểu đồ."},
     "stored_caption": {"en": "Data is stored automatically every 30 minutes.",
                        "vi": "Dữ liệu được tự động lưu mỗi 30 phút."},
-    "download_csv":   {"en": "⬇️ Download CSV", "vi": "⬇️ Tải CSV"},
+    "download_csv":   {"en": "Download CSV", "vi": "Tải CSV"},
 
     # ── Pollutants ────────────────────────────────────────────────────────
-    "poll_title":     {"en": "🧪 POLLUTANTS", "vi": "🧪 CHẤT Ô NHIỄM"},
+    "poll_title":     {"en": "POLLUTANTS", "vi": "CHẤT Ô NHIỄM"},
     "poll_sub":       {"en": "Track each pollutant over time", "vi": "Theo dõi từng chất ô nhiễm theo thời gian"},
     "time_range":     {"en": "Time range", "vi": "Khoảng thời gian"},
     "range_1":        {"en": "Past 24h", "vi": "24 giờ qua"},

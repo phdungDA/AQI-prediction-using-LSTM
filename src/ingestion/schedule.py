@@ -1,5 +1,5 @@
 """
-Tự động lấy dữ liệu MỚI từ OpenWeatherMap và ghi vào PostgreSQL mỗi 30 phút.
+Tự động lấy dữ liệu MỚI từ OpenWeatherMap và ghi vào PostgreSQL vào phút :05 và :35 mỗi giờ.
 
 Mỗi lần chạy:
   1. Hỏi DB: bản ghi mới nhất đang có là lúc nào (MAX(dt))
@@ -22,7 +22,9 @@ from apscheduler.schedulers.blocking import BlockingScheduler
 from api_client import fetch_air_quality
 from dbmanager import init_db, insert_records, get_latest_dt, delete_older_than
 
-INTERVAL_MINUTES = 30
+# Chạy theo phút cố định thay vì "30 phút tính từ lúc bật": OpenWeather có bản ghi giờ mới
+# vài phút sau giờ tròn, nên phút :05 đưa giờ mới vào DB sớm nhất; :35 là lần thử lại.
+RUN_MINUTES = "5,35"
 FIRST_RUN_LOOKBACK = 24 * 3600   # DB trống → chỉ lấy 24h gần nhất
 
 
@@ -69,7 +71,7 @@ def run_job() -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Lấy dữ liệu AQI mới mỗi 30 phút")
+    parser = argparse.ArgumentParser(description="Lấy dữ liệu AQI mới vào phút :05 và :35 mỗi giờ")
     parser.add_argument("--once", action="store_true", help="Chỉ chạy 1 lần rồi thoát")
     args = parser.parse_args()
 
@@ -82,12 +84,13 @@ def main() -> None:
     scheduler = BlockingScheduler(timezone="UTC")
     scheduler.add_job(
         run_job,
-        "interval",
-        minutes=INTERVAL_MINUTES,
-        max_instances=1,    # job trước chưa xong thì không chạy chồng
-        coalesce=True,      # lỡ nhiều lần (máy ngủ) thì chỉ chạy bù 1 lần
+        "cron",
+        minute=RUN_MINUTES,
+        max_instances=1,         # job trước chưa xong thì không chạy chồng
+        coalesce=True,           # lỡ nhiều lần (máy ngủ) thì chỉ chạy bù 1 lần
+        misfire_grace_time=600,  # máy thức dậy trễ tối đa 10 phút vẫn chạy bù
     )
-    print(f"⏰ Scheduler đã chạy: cập nhật mỗi {INTERVAL_MINUTES} phút. Nhấn Ctrl+C để dừng.")
+    print(f"⏰ Scheduler đã chạy: cập nhật vào phút {RUN_MINUTES} mỗi giờ. Nhấn Ctrl+C để dừng.")
     try:
         scheduler.start()
     except (KeyboardInterrupt, SystemExit):

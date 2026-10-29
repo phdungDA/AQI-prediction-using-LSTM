@@ -113,20 +113,20 @@ def render():
             unsafe_allow_html=True,
         )
 
-    pm24 = df.tail(24)["pm2_5"].dropna()
+    pm_now = row["pm2_5"]
     with i2:
-        if len(pm24):
-            # Trung bình PM2.5 trong 24h ÷ 22 = số điếu thuốc tương đương trong 24h đó
-            cigs = pm24.mean() / CIGARETTE_PM25
+        if pd.notna(pm_now):
+            # PM2.5 hiện tại ÷ 22 = số điếu/ngày nếu cả ngày hít không khí như lúc này (Berkeley Earth)
+            cigs = pm_now / CIGARETTE_PM25
             value = t("cig_one" if round(cigs, 1) == 1 else "cig_many", n=f"{cigs:.1f}")
-            note = t("cig_note", pm=f"{pm24.mean():.0f}", c=CIGARETTE_PM25)
+            note = t("cig_note")
         else:
             value = "—"
-            note = t("no_pm_24h")
+            note = t("no_pm_now")
         st.markdown(
             f"""
             <div class="info-card">
-              <div class="ihead">{t("past_24h")}</div>
+              <div class="ihead">{t("cig_head")}</div>
               <div class="ival">{value}</div>
               <div class="inote">{note}</div>
             </div>
@@ -142,7 +142,7 @@ def render():
             (t("step1_t"), t("step1_d", a=f"{win_start:%H:%M %d/%m}", b=f"{row.name:%H:%M %d/%m}")),
             (t("step2_t"), t("step2_d")),
             (t("step3_t"), t("step3_d")),
-            (t("step4_t"), t("step4_d", lvl=aqi_label(next_level), pct=f"{conf:.0f}")),
+            (t("step4_t"), t("step4_d", lvl=aqi_label(next_level), pct=f"{conf:.1f}")),
         ]
         steps_html = "".join(
             f'<div class="step"><div class="snum">{i}</div><div class="stitle">{title}</div>'

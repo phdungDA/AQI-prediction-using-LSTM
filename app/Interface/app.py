@@ -13,29 +13,24 @@ import page_pollutants
 st.set_page_config(page_title="AQI Ha Noi", page_icon="🌫️", layout="wide")
 inject_css()
 
-PAGE_ICONS = {"Dashboard": "🏠", "History": "🕐", "Pollutants": "🌫️"}
-PAGES = list(PAGE_ICONS)
+PAGES = ["Dashboard", "History", "Pollutants"]
 if st.session_state.get("page") not in PAGES:   # lần đầu vào, hoặc trang cũ đã bị bỏ
     st.session_state.page = "Dashboard"
 if "lang" not in st.session_state:
     st.session_state.lang = DEFAULT_LANG
 
-REFRESH_MINUTES = 30
+CHECK_SECONDS = 60
 
 with st.sidebar:
     # ── Auto refresh ──────────────────────────────────────────────────────
-    # Đặt trước mọi chỗ đọc dữ liệu: lần chạy do auto refresh kích hoạt phải xoá cache
-    # trước, nếu không trang vẫn hiện dữ liệu cũ còn trong cache.
+    # Mỗi phút chạy lại trang một lần. Dữ liệu và dự đoán được cache theo mốc giờ mới nhất
+    # của DB (common.latest_version), nên chỉ khi DB có giờ mới thì mới thật sự lấy lại.
     # debounce=False: mặc định thư viện đếm lại từ đầu mỗi khi trang chạy lại (bấm nút,
-    # đổi trang...), nên ai thao tác trong vòng 30 phút thì trang không bao giờ tự refresh.
+    # đổi trang...), nên người đang thao tác sẽ không bao giờ được tự cập nhật.
     if st.session_state.get("auto_refresh_on", True):
         try:
             from streamlit_autorefresh import st_autorefresh
-            count = st_autorefresh(interval=REFRESH_MINUTES * 60 * 1000,
-                                   debounce=False, key="auto_refresh")
-            if count > st.session_state.get("auto_refresh_count", 0):
-                st.session_state.auto_refresh_count = count
-                st.cache_data.clear()
+            st_autorefresh(interval=CHECK_SECONDS * 1000, debounce=False, key="auto_refresh")
         except ImportError:
             st.caption(t("autorefresh_missing"))
 
@@ -68,7 +63,7 @@ with st.sidebar:
 
     for p in PAGES:
         if st.button(
-            f"{PAGE_ICONS[p]}  {t('nav_' + p)}", width="stretch",
+            t("nav_" + p), width="stretch",
             type="primary" if st.session_state.page == p else "secondary",
             key=f"nav_{p}",
         ):
@@ -83,7 +78,7 @@ with st.sidebar:
         st.cache_data.clear()
         st.rerun()
 
-    st.checkbox(t("auto_refresh", m=REFRESH_MINUTES), value=True, key="auto_refresh_on")
+    st.checkbox(t("auto_refresh"), value=True, key="auto_refresh_on")
 
     st.markdown("---")
     st.caption(t("data_source"))
