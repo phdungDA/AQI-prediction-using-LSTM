@@ -4,3 +4,11 @@
    [  1/1] 2026-10-22 13:00:01 → 2026-10-22 13:39:14 : 0 bản ghi (tổng unique: 0)
    API chưa trả về bản ghi mới (dữ liệu cập nhật theo giờ).
 ⏰ Scheduler đã chạy: cập nhật mỗi 30 phút. Nhấn Ctrl+C để dừng.
+
+[2026-10-22 14:09:14 UTC] Bắt đầu lấy dữ liệu mới...
+   [  1/1] 2026-10-22 13:00:01 → 2026-10-22 14:09:14 : 1 bản ghi (tổng unique: 1)
+✅ Đã insert 1 bản ghi vào PostgreSQL.
+
+[2026-10-22 14:39:14 UTC] Bắt đầu lấy dữ liệu mới...
+   [  1/1] 2026-10-22 14:00:01 → 2026-10-22 14:39:14 : 0 bản ghi (tổng unique: 0)
+   API chưa trả về bản ghi mới (dữ liệu cập nhật theo giờ).

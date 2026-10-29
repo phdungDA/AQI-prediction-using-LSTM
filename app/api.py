@@ -81,6 +81,13 @@ def air_quality():
     return Response(content=_cache["json"], media_type="application/json")
 
 
+@app.get("/api/latest")
+def latest():
+    """Mốc dt (epoch, UTC) của bản ghi mới nhất. Frontend hỏi mỗi phút để biết DB có giờ mới chưa."""
+    with get_engine().connect() as conn:
+        return {"max_dt": conn.execute(text("SELECT MAX(dt) FROM air_quality")).scalar()}
+
+
 @app.get("/api/predict/next-hour")
 def predict_next_hour():
     """Dự đoán lớp AQI (1..5) của giờ kế tiếp từ 24 giờ gần nhất trong DB."""

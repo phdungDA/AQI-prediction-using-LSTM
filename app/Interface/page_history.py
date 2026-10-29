@@ -66,16 +66,16 @@ def render():
         n = int((ranked[keys] == ranked[keys].iloc[0]).all(axis=1).sum()) - 1
         return t("ties_one" if n == 1 else "ties_many", n=n) if n > 0 else ""
 
-    def _card(col, label, value, sub, color="#1f2937"):
-        with col:
-            st.markdown(
-                f"""<div class="metric-card"><div class="mlbl">{label}</div>
-                <div class="mval" style="color:{color}">{value}</div>
-                <div class="msub">{sub}</div></div>""",
-                unsafe_allow_html=True,
-            )
+    # 3 thẻ vẽ chung trong 1 hàng lưới (.metric-row) để luôn cao bằng nhau;
+    # nếu mỗi thẻ ở 1 st.column riêng thì thẻ nhiều chữ sẽ cao hơn các thẻ còn lại.
+    cards = [""] * 3
 
-    m1, m2, m3 = st.columns(3)
+    def _card(col, label, value, sub, color="#1f2937"):
+        cards[col] = (f'<div class="metric-card"><div class="mlbl">{label}</div>'
+                      f'<div class="mval" style="color:{color}">{value}</div>'
+                      f'<div class="msub">{sub}</div></div>')
+
+    m1, m2, m3 = 0, 1, 2
 
     # Ngày ô nhiễm nhất: nhiều giờ Poor trở lên nhất; bằng nhau thì PM2.5 trung bình cao hơn
     polluted = daily[daily["poor"] > 0].sort_values(["poor", "pm25"], ascending=[False, False])
@@ -86,8 +86,8 @@ def render():
     else:
         d, r = polluted.index[0], polluted.iloc[0]
         _card(m1, t("most_polluted"), fmt_day(d),
-              t("polluted_sub", n=int(r["poor"]), h=int(r["hours"]), poor=aqi_label(4),
-                pm=f"{r['pm25']:.0f}") + _ties(polluted, ["poor", "pm25"]),
+              t("polluted_sub", n=int(r["poor"]), h=int(r["hours"]), poor=aqi_label(4))
+              + _ties(polluted, ["poor", "pm25"]),
               AQI_COLORS[int(r["peak"])])
 
     # Ngày sạch nhất: không có giờ Poor nào và ít nhất nửa số giờ Good/Fair;
@@ -99,16 +99,17 @@ def render():
         _card(m2, t("cleanest"), "—", t("not_enough_period"), "#9ca3af")
     elif clean.empty:
         _card(m2, t("cleanest"), t("none"),
-              t("no_clean_day", good=aqi_label(1), fair=aqi_label(2), poor=aqi_label(4)), AQI_COLORS[4])
+              t("no_clean_day", good=aqi_label(1), fair=aqi_label(2)), AQI_COLORS[4])
     else:
         d, r = clean.index[0], clean.iloc[0]
         _card(m2, t("cleanest"), fmt_day(d),
-              t("clean_sub", n=int(r["clean"]), h=int(r["hours"]), good=aqi_label(1), fair=aqi_label(2),
-                pm=f"{r['pm25']:.0f}") + _ties(clean, ["share", "pm25"]),
+              t("clean_sub", n=int(r["clean"]), h=int(r["hours"]), good=aqi_label(1), fair=aqi_label(2))
+              + _ties(clean, ["share", "pm25"]),
               AQI_COLORS[1])
 
     _card(m3, t("sensor"), t("sensor_val", m=missing_hours, t=total_hours),
           t("sensor_sub", p=f"{complete_pct:.1f}"))
+    st.markdown(f'<div class="metric-row">{"".join(cards)}</div>', unsafe_allow_html=True)
 
     # ── Phân bố chất lượng không khí theo thời gian ─────────────────────
     st.markdown(f'<div class="section-h">{t("dist_h")}</div>', unsafe_allow_html=True)
@@ -149,8 +150,8 @@ def render():
         start_h = prev_h = None
         prev_lvl = None
 
-        for t, v in day_vals.items():
-            h = t.hour
+        for ts, v in day_vals.items():   # không đặt tên t: sẽ che mất hàm dịch t()
+            h = ts.hour
             lvl = None if pd.isna(v) else int(v)
             if lvl == prev_lvl and prev_h is not None and h == prev_h + 1:
                 prev_h = h  # nối dài nhóm hiện tại

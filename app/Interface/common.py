@@ -153,8 +153,10 @@ def inject_css():
         .scale-wrap .scale-table th:first-child {width:80px;}
         .scale-wrap .scale-table .pbadge {min-width:52px; text-align:center; box-sizing:border-box;}
 
+        .metric-row {display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:16px;}
+        @media (max-width: 640px) {.metric-row {grid-template-columns:1fr;}}
         .metric-card {background:#fff; border:1px solid #1f2937; border-radius:14px;
-                      padding:18px 20px; text-align:left; height:100%;}
+                      padding:18px 20px; text-align:left; height:100%; box-sizing:border-box;}
         .metric-card .mlbl {font-size:15px; font-weight:600; color:#6b7280; margin-bottom:6px;}
         .metric-card .mval {font-size:28px; font-weight:800; color:#1f2937; line-height:1.2;}
         .metric-card .msub {font-size:16px; color:#4b5563; margin-top:6px; line-height:1.5;}
@@ -257,18 +259,19 @@ def confidence_ring_html(pct: float, color: str) -> str:
     (không xuống dòng để không làm vỡ khối HTML trong st.markdown)."""
     import math
 
-    r = 34
+    # 1 chữ số thập phân, khớp với các thanh xác suất bên dưới; vòng 112px để "100.0%" không tràn
+    r = 47
     circ = 2 * math.pi * r
     dash = circ * pct / 100
     return (
         '<div style="display:flex;flex-direction:column;align-items:center;gap:6px;flex-shrink:0;">'
-        '<div style="position:relative;width:88px;height:88px;">'
-        '<svg width="88" height="88" viewBox="0 0 88 88" style="transform:rotate(-90deg)">'
-        f'<circle cx="44" cy="44" r="{r}" fill="none" stroke="#eef0f2" stroke-width="9"/>'
-        f'<circle cx="44" cy="44" r="{r}" fill="none" stroke="{color}" stroke-width="9" '
+        '<div style="position:relative;width:112px;height:112px;">'
+        '<svg width="112" height="112" viewBox="0 0 112 112" style="transform:rotate(-90deg)">'
+        f'<circle cx="56" cy="56" r="{r}" fill="none" stroke="#eef0f2" stroke-width="9"/>'
+        f'<circle cx="56" cy="56" r="{r}" fill="none" stroke="{color}" stroke-width="9" '
         f'stroke-linecap="round" stroke-dasharray="{dash:.1f} {circ:.1f}"/></svg>'
         '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;'
-        f'font-size:22px;font-weight:800;color:#1f2937;">{pct:.0f}%</div></div>'
+        f'font-size:18px;font-weight:800;color:#1f2937;">{pct:.1f}%</div></div>'
         '<div style="font-size:13px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.06em;">'
         f'{t("confidence")}</div></div>'
     )
@@ -288,8 +291,24 @@ def trend_arrow(current: float, previous: float):
 
 # ── Dữ liệu ──────────────────────────────────────────────────────────────────
 # show_spinner=False: chữ của spinner trong decorator cố định 1 ngôn ngữ, nên get_data() tự hiện spinner
-@st.cache_data(ttl=25*60, show_spinner=False)
+@st.cache_data(ttl=30, show_spinner=False)
+def latest_version():
+    """Mốc giờ của bản ghi mới nhất trong DB (GET /api/latest), None nếu không hỏi được.
+    Dùng làm khoá cache cho dữ liệu và dự đoán: DB có giờ mới → khoá đổi → tự lấy lại, không cần xoá cache."""
+    try:
+        resp = requests.get(f"{API_BASE_URL.rstrip('/')}/api/latest", timeout=5)
+        return resp.json()["max_dt"] if resp.ok else None
+    except (requests.exceptions.RequestException, ValueError, KeyError):
+        return None
+
+
 def load_data_from_api() -> pd.DataFrame:
+    return _load_data(latest_version())
+
+
+# ttl chỉ còn là lưới an toàn khi không hỏi được latest_version()
+@st.cache_data(ttl=25*60, show_spinner=False)
+def _load_data(version) -> pd.DataFrame:
     """Gọi GET /api/air-quality, trả DataFrame index=datetime (đã cộng 7h → GMT+7), cột aqi + 8 chất.
     Dữ liệu từ API đã được reindex lưới 1h + nội suy gap ngắn ở backend, FE không xử lý lại."""
     resp = requests.get(f"{API_BASE_URL.rstrip('/')}/api/air-quality", timeout=API_TIMEOUT)
@@ -331,11 +350,15 @@ def last_update_text() -> str:
 
 
 # ── Model ────────────────────────────────────────────────────────────────────
-@st.cache_data(ttl=5 * 60, show_spinner=False)
 def predict_next_hour():
+    return _predict(latest_version())
+
+
+@st.cache_data(ttl=5 * 60, show_spinner=False)
+def _predict(version):
     """Dự đoán lớp AQI (1..5) của giờ kế tiếp bằng cách gọi GET /api/predict/next-hour.
     Trả về (level, probs) hoặc (None, mã lỗi). Backend tự lấy 24h gần nhất từ DB.
-    Cache 5 phút (kể cả kết quả lỗi); nút Refresh data sẽ xoá cache.
+    Cache theo mốc giờ mới nhất của DB, tối đa 5 phút (kể cả kết quả lỗi); nút Refresh data sẽ xoá cache.
     Cache dùng chung mọi người xem nên chỉ trả mã lỗi, dịch bằng pred_error_text() lúc hiển thị."""
     try:
         resp = requests.get(f"{API_BASE_URL.rstrip('/')}/api/predict/next-hour", timeout=API_TIMEOUT)
